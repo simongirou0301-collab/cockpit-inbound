@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cockpit Inbound</title>
+<meta name="description" content="Routine du jour, relances, trame d'appel, messages et objections pour la vente inbound.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cockpit">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EDF1EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1613" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Mise en page : bandeau d'accueil (salutation, prochaine relance, anneau de progression), onglets à indicateur glissant,
+   puis des espaces de travail asymétriques. Une seule couleur d'accent, surfaces sans bordure, ombres teintées, grain léger.
+   Rayons : 16 px pour les cartes, 9 px pour les champs et boutons, 4 px pour les étiquettes. */
+:root{
+  --bg:#EDF1EE;
+  --surface:#FFFFFF;
+  --fg:#14201C;
+  --muted:#586A60;
+  --line:#DCE4DF;
+  --hover:#F0F5F2;
+  --accent:#0E6B5A;
+  --accent-fg:#FFFFFF;
+  --accent-soft:#D6ECE5;
+  --warn:#B4380B;
+  --warn-soft:#FBE4D9;
+  --soon:#7F5400;
+  --soon-soft:#F6E9C4;
+  --shadow:0 0 0 1px rgba(20,60,50,.05),0 1px 2px rgba(20,60,50,.06),0 18px 36px -18px rgba(20,60,50,.32);
+  --grain:.05;
+  --z-content:1;
+  --z-toast:20;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1613;--surface:#16201C;--fg:#E6EEEA;--muted:#9CAEA6;--line:#26332E;--hover:#1D2A25;
+    --accent:#4FC3A8;--accent-fg:#06241D;--accent-soft:#1A3A32;
+    --warn:#FF9A6E;--warn-soft:#3B2318;--soon:#EBC862;--soon-soft:#352A0C;
+    --shadow:0 0 0 1px rgba(255,255,255,.05),0 20px 36px -18px rgba(0,0,0,.8);
+    --grain:.07;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1613;--surface:#16201C;--fg:#E6EEEA;--muted:#9CAEA6;--line:#26332E;--hover:#1D2A25;
+  --accent:#4FC3A8;--accent-fg:#06241D;--accent-soft:#1A3A32;
+  --warn:#FF9A6E;--warn-soft:#3B2318;--soon:#EBC862;--soon-soft:#352A0C;
+  --shadow:0 0 0 1px rgba(255,255,255,.05),0 20px 36px -18px rgba(0,0,0,.8);
+  --grain:.07;
+  color-scheme:dark;
+}
+@property --p{syntax:'<number>';inherits:false;initial-value:0}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(820px 420px at 6% -8%,var(--accent-soft),transparent 70%),
+    radial-gradient(620px 360px at 100% 18%,var(--accent-soft),transparent 75%);
+  background-repeat:no-repeat;
+  color:var(--fg);font:15px/1.55 var(--font-body);
+  padding-inline:16px;padding-block:22px 72px;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:var(--grain);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap{position:relative;z-index:var(--z-content);max-width:1100px;margin-inline:auto;display:flex;flex-direction:column;gap:28px}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--accent);color:var(--accent-fg);padding:8px 12px;border-radius:9px;font-weight:600;z-index:var(--z-toast)}
+.skip:focus{left:16px}
+
+/* Bandeau d'accueil */
+.top{display:flex;flex-direction:column;gap:30px}
+.brandrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand{font:700 17px var(--font-display);letter-spacing:-.01em}
+.date{color:var(--muted);font-size:14px}
+.date::first-letter{text-transform:uppercase}
+.hero{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:22px 40px}
+.hero-text{flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:16px}
+h1{font:700 clamp(40px,7.5vw,72px)/1.04 var(--font-display);letter-spacing:-.04em;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{font-size:18px;line-height:1.5;color:var(--muted);margin:0;max-width:46ch;text-wrap:pretty}
+.sub strong{color:var(--fg);font-weight:600}
+.sub.late strong{color:var(--warn)}
+.ring{--p:0;flex:none;width:112px;height:112px;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p) * 1%),var(--line) 0);display:grid;place-items:center;transition:--p .8s var(--ease);box-shadow:var(--shadow)}
+.ring>div{width:92px;height:92px;border-radius:50%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:background .3s var(--ease)}
+.ring b{font:500 20px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.ring small{font-size:12px;color:var(--muted)}
+.ring.done>div{background:var(--accent-soft)}
+.ring.done b,.ring.done small{color:var(--accent)}
+
+h2{font:650 21px/1.2 var(--font-display);letter-spacing:-.015em;margin:0;text-wrap:balance}
+h3{font:600 12px/1.3 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+p{text-wrap:pretty}
+
+/* Onglets */
+.tabs{position:relative;display:flex;gap:2px;overflow-x:auto;padding-bottom:6px}
+.tab{appearance:none;background:none;border:0;border-radius:9px;color:var(--muted);font:600 14px var(--font-body);padding:10px 14px;cursor:pointer;white-space:nowrap;display:flex;gap:8px;align-items:center;transition:color .2s var(--ease),background .2s var(--ease),transform .2s var(--ease)}
+.tab:hover{color:var(--fg);background:var(--hover)}
+.tab:active{transform:scale(.98)}
+.tab[aria-selected="true"]{color:var(--fg)}
+.ind{position:absolute;left:0;bottom:2px;height:3px;width:100px;border-radius:2px;background:var(--accent);transform-origin:left center;pointer-events:none}
+.ind.ready{transition:transform .38s var(--ease)}
+.tab:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.oitem:focus-visible,.item input:focus-visible + .box{outline:2px solid var(--accent);outline-offset:2px}
+.count{font:500 12px var(--font-mono);background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:0 6px}
+
+[role="tabpanel"]:not([hidden]) :is(.grid,.narrow,.wide,.callgrid,.msg,.split)>*{animation:rise .55s var(--ease) both}
+[role="tabpanel"]:not([hidden]) :is(.grid,.narrow,.wide,.callgrid,.msg,.split)>*:nth-child(2){animation-delay:.07s}
+[role="tabpanel"]:not([hidden]) :is(.grid,.narrow,.wide,.callgrid,.msg,.split)>*:nth-child(3){animation-delay:.14s}
+@keyframes rise{from{transform:translateY(12px)}to{transform:none}}
+
+/* Espaces de travail */
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:24px;align-items:start}
+.callgrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:24px;align-items:start}
+.msg{display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);gap:24px;align-items:start}
+.split{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:24px;align-items:start}
+@media (min-width:861px){
+  .callgrid>.card:last-child,.msg>.card:first-child,.split>.card{position:sticky;top:16px}
+}
+@media (max-width:860px){
+  .grid,.callgrid,.msg,.split{grid-template-columns:minmax(0,1fr)}
+}
+
+.card{position:relative;isolation:isolate;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.card::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;background:radial-gradient(280px circle at var(--mx,50%) var(--my,0%),var(--accent-soft),transparent 70%);transition:opacity .3s var(--ease)}
+.card:hover::before{opacity:.4}
+@media (max-width:560px){.card{padding:20px}}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 12px}
+.prog{font:500 13px var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:3px;width:0;transition:width .4s var(--ease)}
+
+.group{display:flex;flex-direction:column}
+.group+.group{margin-top:12px}
+.group>h3{display:flex;gap:10px;align-items:baseline;padding-bottom:8px}
+.group>h3 .tm{font:500 12px var(--font-mono);letter-spacing:0;text-transform:none;color:var(--accent)}
+
+/* Cases à cocher */
+.item{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start;padding:11px 10px;margin-inline:-10px;border-top:1px solid var(--line);cursor:pointer;transition:background .18s var(--ease)}
+.item:hover{background:var(--hover)}
+.item input{position:absolute;opacity:0;width:22px;height:22px;margin:0;left:10px;top:12px}
+.box{width:22px;height:22px;margin-top:1px;border-radius:7px;border:1.5px solid var(--muted);display:grid;place-items:center;transition:background .2s var(--ease),border-color .2s var(--ease),transform .3s var(--spring)}
+.box::after{content:"";width:6px;height:11px;border:solid var(--accent-fg);border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);margin-top:-2px;transition:transform .3s var(--spring)}
+.item input:checked + .box{background:var(--accent);border-color:var(--accent)}
+.item input:checked + .box::after{transform:rotate(45deg) scale(1)}
+.item:active .box{transform:scale(.9)}
+.item .t{display:block;font-weight:500;transition:color .2s var(--ease)}
+.item small{display:block;color:var(--muted);font-size:13px;line-height:1.45;margin-top:1px}
+.item input:checked ~ .body .t{text-decoration:line-through;text-decoration-thickness:1px;color:var(--muted)}
+
+/* Boutons et champs */
+.btn{appearance:none;font:600 14px var(--font-body);border-radius:9px;padding:10px 16px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);white-space:nowrap;transition:filter .18s var(--ease),transform .18s var(--ease),background .18s var(--ease),color .18s var(--ease),border-color .18s var(--ease)}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:scale(.98) translateY(1px)}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line);filter:none}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--hover)}
+.btn.link{background:transparent;border-color:transparent;color:var(--accent);filter:none}
+.btn.link:hover{background:var(--accent-soft)}
+.btn.sm{padding:6px 12px;font-size:13px}
+input[type="text"],select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid transparent;border-radius:9px;padding:11px 13px;transition:border-color .18s var(--ease),background .18s var(--ease)}
+input[type="text"]:hover,select:hover,textarea:hover{border-color:var(--line)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.85}
+textarea{resize:vertical;min-height:150px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted);font-weight:500}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+/* Relances */
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.7fr) auto;gap:8px}
+@media (max-width:560px){.addrow{grid-template-columns:minmax(0,1fr)}}
+.timers{list-style:none;margin:0;padding:0}
+.timer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center;padding:15px 0;border-top:1px solid var(--line);transition:opacity .18s var(--ease),transform .18s var(--ease)}
+.timer.out{opacity:0;transform:translateX(14px)}
+.timer .lab{font-weight:600;overflow-wrap:anywhere}
+.timer .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:400 13px var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.timer .btn{grid-row:1 / span 2;grid-column:2}
+.pill{display:inline-block;padding:1px 8px;border-radius:4px;font:500 12px var(--font-mono)}
+.pill.over{background:var(--warn-soft);color:var(--warn)}
+.pill.soon{background:var(--soon-soft);color:var(--soon)}
+.pill.later{background:var(--accent-soft);color:var(--accent)}
+.ex{font:500 11px var(--font-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--hover);border-radius:4px;padding:0 6px}
+.zero{display:flex;flex-direction:column;gap:3px;padding:22px;border-radius:12px;background:var(--hover);color:var(--muted);margin-top:4px}
+.zero strong{color:var(--fg);font:600 15px var(--font-body)}
+.empty{color:var(--muted);margin:0}
+
+.narrow{max-width:760px;display:flex;flex-direction:column;gap:20px}
+.wide{display:flex;flex-direction:column;gap:20px}
+.chrono{font:500 28px var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.tpl{display:flex;flex-direction:column;gap:12px}
+.tpl .meta{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:baseline;justify-content:space-between}
+.kind{font:500 12px var(--font-mono);color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 8px}
+.subj{font-weight:600;overflow-wrap:anywhere}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;background:var(--bg);border-radius:10px;padding:14px 16px;margin:0;font-family:var(--font-body)}
+
+/* Objections */
+.olist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.oitem{appearance:none;width:100%;text-align:left;background:none;border:0;border-radius:9px;padding:12px 14px;font:500 15px/1.35 var(--font-body);color:var(--fg);cursor:pointer;transition:background .18s var(--ease),color .18s var(--ease),transform .18s var(--ease)}
+.oitem:hover{background:var(--hover)}
+.oitem:active{transform:scale(.99)}
+.oitem[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.odetail{display:flex;flex-direction:column;gap:16px}
+.odetail p{margin:0;font-size:16px}
+.lbl{font:600 12px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:11px 18px;border-radius:10px;font-size:14px;display:flex;gap:14px;align-items:center;max-width:calc(100% - 32px);z-index:var(--z-toast);box-shadow:0 12px 28px -10px rgba(0,0,0,.45)}
+.toast:not([hidden]){animation:pop .4s var(--spring) both}
+@keyframes pop{from{transform:translateX(-50%) translateY(12px)}to{transform:translateX(-50%)}}
+.toast-btn{appearance:none;background:none;border:0;color:inherit;font:700 14px var(--font-body);text-decoration:underline;cursor:pointer;padding:0}
+.foot{font-size:13px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+
+<a class="skip" href="#main" id="skip">Aller au contenu</a>
+<main class="wrap" id="main" tabindex="-1">
+  <header class="top">
+    <div class="brandrow"><span class="brand">Cockpit Inbound</span><span class="date" id="today"></span></div>
+    <div class="hero">
+      <div class="hero-text">
+        <h1 id="greet"></h1>
+        <p class="sub" id="sub"></p>
+      </div>
+      <div class="ring" id="ring" role="img" aria-label="Progression de la routine"><div><b id="rnum">0/12</b><small id="rlbl">routine</small></div></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+    <span class="ind" id="ind" aria-hidden="true"></span>
+    <button class="tab" role="tab" id="tab-jour" aria-controls="panel-jour" aria-selected="true">Aujourd'hui <span class="count" id="tabcount" hidden></span></button>
+    <button class="tab" role="tab" id="tab-appel" aria-controls="panel-appel" aria-selected="false">Appel de découverte</button>
+    <button class="tab" role="tab" id="tab-messages" aria-controls="panel-messages" aria-selected="false">Messages</button>
+    <button class="tab" role="tab" id="tab-objections" aria-controls="panel-objections" aria-selected="false">Objections</button>
+  </nav>
+
+  <section id="panel-jour" role="tabpanel" aria-labelledby="tab-jour">
+    <div class="grid">
+      <div class="card">
+        <div class="head"><h2>Routine du jour</h2><span class="prog" id="rprog"></span></div>
+        <div class="bar"><i id="rbar"></i></div>
+        <div id="routine"></div>
+        <p class="hint">Créneaux suggérés. La liste se remet à zéro chaque matin.</p>
+      </div>
+      <div class="card">
+        <div class="head"><h2>Relances</h2><span class="prog" id="tprog"></span></div>
+        <form class="addrow" id="addform" autocomplete="off">
+          <input type="text" id="tlabel" maxlength="60" placeholder="Marie, devis envoyé" aria-label="Libellé de la relance" required>
+          <select id="tdelay" aria-label="Délai de relance"></select>
+          <button class="btn" type="submit">Ajouter</button>
+        </form>
+        <p class="hint">Prénom et contexte seulement, sans nom complet ni coordonnées.</p>
+        <ul class="timers" id="timers"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-appel" role="tabpanel" aria-labelledby="tab-appel" hidden>
+    <div class="callgrid">
+      <div class="card">
+        <div class="head"><h2>Trame d'appel de découverte</h2><span class="prog" id="cprog"></span></div>
+        <div class="bar"><i id="cbar"></i></div>
+        <div class="row">
+          <span class="chrono" id="chrono">00:00</span>
+          <button class="btn ghost sm" type="button" id="chbtn">Démarrer le chrono</button>
+          <button class="btn link sm" type="button" id="newcall">Nouvel appel</button>
+        </div>
+        <div id="callgroups"></div>
+      </div>
+      <div class="card">
+        <h2>Notes de l'appel</h2>
+        <textarea id="notes" aria-label="Notes de l'appel" placeholder="Besoin, niveau, financement, prochaine étape. À recopier dans HubSpot."></textarea>
+        <div class="row">
+          <button class="btn ghost sm" type="button" id="copynotes">Copier les notes</button>
+        </div>
+        <p class="hint">Les notes ne sont pas enregistrées. Recopie-les dans HubSpot avant de fermer la page.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="panel-messages" role="tabpanel" aria-labelledby="tab-messages" hidden>
+    <div class="msg">
+      <div class="card">
+        <h2>Champs à remplir</h2>
+        <div class="fields">
+          <label class="f" for="f-prenom">Prénom du lead<input type="text" id="f-prenom" maxlength="40" autocomplete="off"></label>
+          <label class="f" for="f-langue">Langue<input type="text" id="f-langue" maxlength="30" placeholder="anglais" autocomplete="off"></label>
+          <label class="f" for="f-creneau">Créneau proposé<input type="text" id="f-creneau" maxlength="50" placeholder="demain à 10 h" autocomplete="off"></label>
+          <label class="f" for="f-moi">Ton prénom<input type="text" id="f-moi" maxlength="40" autocomplete="off"></label>
+          <label class="f" for="f-entreprise">Entreprise<input type="text" id="f-entreprise" maxlength="40" autocomplete="off"></label>
+        </div>
+        <p class="hint">Ton prénom et l'entreprise sont gardés dans ce navigateur. Le prénom du lead ne l'est pas. Les crochets restants sont à compléter à la main.</p>
+      </div>
+      <div id="templates" class="wide"></div>
+    </div>
+  </section>
+
+  <section id="panel-objections" role="tabpanel" aria-labelledby="tab-objections" hidden>
+    <div class="wide">
+      <div class="narrow">
+        <label class="f" for="osearch">Chercher une objection<input type="text" id="osearch" placeholder="prix, CPF, employeur…" autocomplete="off"></label>
+        <p class="hint">Les crochets sont à remplacer par les éléments de ton offre.</p>
+      </div>
+      <div class="split">
+        <ul class="olist" id="olist"></ul>
+        <div class="card odetail" id="odetail" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer><p class="foot">Rien n'est envoyé hors de ce navigateur. Aucune donnée de lead n'est enregistrée.</p></footer>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+  var KEY='cockpit.v1', S={};
+  try{S=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){S={};}
+  function persist(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+  function $(s,r){return (r||document).querySelector(s);}
+  function pad(n){return n<10?'0'+n:''+n;}
+  function uid(){return Math.random().toString(36).slice(2,9);}
+  function h(tag,props,kids){
+    var e=document.createElement(tag);
+    for(var k in (props||{})){
+      var v=props[k];
+      if(k==='class')e.className=v;
+      else if(k==='text')e.textContent=v;
+      else if(k.slice(0,2)==='on')e.addEventListener(k.slice(2),v);
+      else e.setAttribute(k,v);
+    }
+    (kids||[]).forEach(function(c){if(c!=null)e.appendChild(typeof c==='string'?document.createTextNode(c):c);});
+    return e;
+  }
+
+  /* Lien d'évitement */
+  $('#skip').addEventListener('click',function(ev){ev.preventDefault();$('#main').focus();});
+
+  /* Halo qui suit le curseur sur les cartes */
+  document.addEventListener('pointermove',function(ev){
+    var c=ev.target&&ev.target.closest?ev.target.closest('.card'):null;
+    if(!c)return;
+    var r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',(ev.clientX-r.left)+'px');
+    c.style.setProperty('--my',(ev.clientY-r.top)+'px');
+  },{passive:true});
+
+  /* Toast et copie */
+  var toastEl=$('#toast'), toastTimer;
+  function hideToast(){toastEl.hidden=true;}
+  function toast(msg,action){
+    toastEl.textContent='';
+    toastEl.appendChild(h('span',{text:msg}));
+    if(action){toastEl.appendChild(h('button',{class:'toast-btn',type:'button',text:action.label,onclick:function(){action.fn();hideToast();}}));}
+    toastEl.hidden=false;
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(hideToast,action?6000:2200);
+  }
+  function copyText(t){
+    function fallback(){
+      var ta=h('textarea',{'aria-hidden':'true'});
+      ta.value=t;ta.style.cssText='position:fixed;opacity:0;top:0;left:0;min-height:0;height:1px';
+      document.body.appendChild(ta);ta.select();
+      var ok=false;try{ok=document.execCommand('copy');}catch(e){}
+      ta.remove();
+      toast(ok?'Copié':'Copie impossible, sélectionne le texte à la main');
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){toast('Copié');},fallback);
+    }else fallback();
+  }
+
+  /* Onglets avec indicateur glissant */
+  var TABS=['jour','appel','messages','objections'], curTab='jour';
+  var ind=$('#ind');
+  function moveInd(){
+    var b=$('#tab-'+curTab);
+    if(!b||!b.offsetWidth)return;
+    var x=b.offsetLeft+14,w=Math.max(10,b.offsetWidth-28);
+    ind.style.transform='translateX('+x+'px) scaleX('+(w/100)+')';
+  }
+  function showTab(id){
+    curTab=id;
+    TABS.forEach(function(t){
+      $('#tab-'+t).setAttribute('aria-selected',t===id?'true':'false');
+      $('#tab-'+t).tabIndex=t===id?0:-1;
+      $('#panel-'+t).hidden=t!==id;
+    });
+    moveInd();
+    S.tab=id;persist();
+  }
+  TABS.forEach(function(t,i){
+    var b=$('#tab-'+t);
+    b.addEventListener('click',function(){showTab(t);});
+    b.addEventListener('keydown',function(ev){
+      var n=null;
+      if(ev.key==='ArrowRight')n=TABS[(i+1)%TABS.length];
+      if(ev.key==='ArrowLeft')n=TABS[(i+TABS.length-1)%TABS.length];
+      if(n){ev.preventDefault();showTab(n);$('#tab-'+n).focus();}
+    });
+  });
+  window.addEventListener('resize',moveInd);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moveInd);
+
+  /* Accueil */
+  $('#today').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  function renderGreeting(){
+    var hr=new Date().getHours(),g=hr<12?'Bonjour':(hr<18?'Bon après-midi':'Bonsoir');
+    var el=$('#greet');el.textContent=g+', ';
+    el.appendChild(h('em',{text:'Simon'}));el.appendChild(document.createTextNode('.'));
+  }
+
+  /* Routine du jour */
+  var ROUTINE=[
+    {t:'8 h 45',title:'Avant les premiers appels',items:[
+      ['r1','Ouvrir HubSpot et trier les leads arrivés depuis hier soir','Les plus récents et les plus chauds passent en premier.'],
+      ['r2','Repérer les deals sans prochaine action','Chacun doit avoir une action datée avant le premier appel.'],
+      ['r3','Poser les minuteurs des relances du jour','Un libellé court par lead, avec le bon délai.']
+    ]},
+    {t:'9 h 00',title:'Rappels des nouveaux leads',items:[
+      ['r4','Appeler chaque nouveau lead en moins de 5 minutes','Le délai du premier contact compte plus que le script.'],
+      ['r5','Laisser un message vocal si pas de réponse','Puis envoyer le SMS et l\'email de premier contact.'],
+      ['r6','Noter le résultat de chaque appel dans HubSpot','Joint, pas joint, rendez-vous pris, perdu.']
+    ]},
+    {t:'14 h 00',title:'Relances et démos',items:[
+      ['r7','Faire les relances J+1, J+3 et J+7 du jour','Utilise les messages prêts à copier.'],
+      ['r8','Enchaîner les appels de découverte et démos planifiés','Remplis la trame pendant l\'appel.'],
+      ['r9','Envoyer le compte rendu dans l\'heure suivant chaque démo','Objectif, niveau, financement, prochaine étape.']
+    ]},
+    {t:'17 h 15',title:'Fin de journée',items:[
+      ['r10','Mettre à jour l\'étape et la prochaine action de chaque deal','Aucune opportunité ouverte sans date.'],
+      ['r11','Clôturer les perdus avec la raison','Prix, financement, timing, concurrent, sans réponse.'],
+      ['r12','Préparer les relances de demain','Pose les minuteurs avant de fermer.']
+    ]}
+  ];
+  var RTOTAL=ROUTINE.reduce(function(n,g){return n+g.items.length;},0);
+  function todayKey(){return new Date().toLocaleDateString('sv-SE');}
+  if(!S.routine||S.routine.day!==todayKey()){S.routine={day:todayKey(),done:[]};persist();}
+  function makeItem(id,title,hint,checked,onChange){
+    var cb=h('input',{type:'checkbox',id:id});
+    cb.checked=!!checked;
+    cb.addEventListener('change',function(){onChange(cb.checked);});
+    var el=h('label',{class:'item'},[
+      cb,
+      h('span',{class:'box','aria-hidden':'true'}),
+      h('span',{class:'body'},[h('span',{class:'t',text:title}),h('small',{text:hint})])
+    ]);
+    return {el:el,cb:cb};
+  }
+  function renderRoutine(){
+    var root=$('#routine');root.textContent='';
+    ROUTINE.forEach(function(g){
+      var grp=h('div',{class:'group'},[h('h3',{},[g.title,h('span',{class:'tm',text:g.t})])]);
+      g.items.forEach(function(it){
+        var m=makeItem('chk-'+it[0],it[1],it[2],S.routine.done.indexOf(it[0])>-1,function(on){
+          var d=S.routine.done,i=d.indexOf(it[0]);
+          if(on&&i<0)d.push(it[0]);
+          if(!on&&i>-1)d.splice(i,1);
+          persist();updateRoutineProgress();
+        });
+        grp.appendChild(m.el);
+      });
+      root.appendChild(grp);
+    });
+    updateRoutineProgress();
+  }
+  function updateRoutineProgress(){
+    var n=S.routine.done.length,p=Math.round(100*n/RTOTAL),ring=$('#ring');
+    $('#rprog').textContent=n+' / '+RTOTAL;
+    $('#rbar').style.width=p+'%';
+    ring.style.setProperty('--p',String(p));
+    ring.classList.toggle('done',n===RTOTAL);
+    $('#rnum').textContent=n+'/'+RTOTAL;
+    $('#rlbl').textContent=n===RTOTAL?'terminée':'routine';
+    ring.setAttribute('aria-label','Routine du jour : '+n+' sur '+RTOTAL);
+  }
+
+  /* Relances */
+  var DELAYS=[
+    ['15 minutes',{m:15}],['30 minutes',{m:30}],['1 heure',{m:60}],['2 heures',{m:120}],
+    ['Demain 9 h (jour ouvré)',{bd:1}],['J+3 ouvrés, 9 h',{bd:3}],['J+7 ouvrés, 9 h',{bd:7}]
+  ];
+  var sel=$('#tdelay');
+  DELAYS.forEach(function(d,i){sel.appendChild(h('option',{value:String(i),text:d[0]}));});
+  sel.value='4';
+  function addBD(d,n){
+    var r=new Date(d);
+    while(n>0){r.setDate(r.getDate()+1);var w=r.getDay();if(w!==0&&w!==6)n--;}
+    r.setHours(9,0,0,0);return r;
+  }
+  function dueFrom(o){return o.m?Date.now()+o.m*60000:addBD(new Date(),o.bd).getTime();}
+  if(!S.seeded){
+    var now0=Date.now();
+    S.timers=[
+      {id:uid(),label:'Marie, devis envoyé',due:now0-10*60000,ex:1},
+      {id:uid(),label:'Thomas, rappel après démo',due:now0+25*60000,ex:1},
+      {id:uid(),label:'Léa, attente accord CPF',due:addBD(new Date(),1).getTime(),ex:1}
+    ];
+    S.seeded=1;persist();
+  }
+  if(!S.timers)S.timers=[];
+  function fmtDue(ts){
+    var d=new Date(ts),n=new Date(),tom=new Date(n);tom.setDate(n.getDate()+1);
+    var t=pad(d.getHours())+':'+pad(d.getMinutes());
+    if(d.toDateString()===n.toDateString())return t;
+    if(d.toDateString()===tom.toDateString())return 'demain '+t;
+    return d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,'')+' '+t;
+  }
+  function rel(ms){
+    var m=Math.round(Math.abs(ms)/60000),txt;
+    if(m<1)return 'à échéance';
+    if(m<60)txt=m+' min';
+    else if(m<1440){var hh=Math.floor(m/60),mm=m%60;txt=hh+' h'+(mm?' '+pad(mm):'');}
+    else txt=Math.round(m/1440)+' j';
+    return ms<0?'en retard de '+txt:'dans '+txt;
+  }
+  function removeTimer(id){
+    var i=-1;S.timers.forEach(function(t,k){if(t.id===id)i=k;});
+    if(i<0)return;
+    var t=S.timers.splice(i,1)[0];persist();renderTimers();
+    toast('Relance terminée',{label:'Annuler',fn:function(){S.timers.push(t);persist();renderTimers();}});
+  }
+  function renderSub(list,over,now){
+    var sub=$('#sub');sub.textContent='';sub.className='sub';
+    if(over>0){
+      sub.className='sub late';
+      var first=list[0];
+      sub.appendChild(document.createTextNode(over===1?'1 relance en retard : ':over+' relances en retard, à commencer par '));
+      sub.appendChild(h('strong',{text:first.label}));
+      sub.appendChild(document.createTextNode('.'));
+    }else if(list.length){
+      sub.appendChild(document.createTextNode('Prochaine relance : '));
+      sub.appendChild(h('strong',{text:list[0].label}));
+      sub.appendChild(document.createTextNode(', '+rel(list[0].due-now)+'.'));
+    }else{
+      sub.textContent='Aucune relance posée. Ajoute la première juste après ton prochain appel.';
+    }
+  }
+  function renderTimers(){
+    var ul=$('#timers');ul.textContent='';
+    var list=S.timers.slice().sort(function(a,b){return a.due-b.due;});
+    var over=0,now=Date.now();
+    if(!list.length){
+      ul.appendChild(h('li',{class:'zero'},[
+        h('strong',{text:'Aucune relance posée'}),
+        h('span',{text:'Ajoute un lead juste après l\'appel, avec le délai de rappel.'})
+      ]));
+    }
+    list.forEach(function(t){
+      var ms=t.due-now,cls=ms<0?'over':(ms<3600000?'soon':'later');
+      if(ms<0)over++;
+      var meta=h('div',{class:'meta'},[
+        h('span',{class:'pill '+cls,text:rel(ms)}),
+        h('span',{text:fmtDue(t.due)}),
+        t.ex?h('span',{class:'ex',text:'exemple'}):null
+      ]);
+      ul.appendChild(h('li',{class:'timer'},[
+        h('div',{class:'lab',text:t.label}),
+        h('button',{class:'btn link sm',type:'button',text:'Fait',onclick:function(ev){
+          var li=ev.currentTarget.closest('li');
+          if(li)li.classList.add('out');
+          setTimeout(function(){removeTimer(t.id);},190);
+        }}),
+        meta
+      ]));
+    });
+    $('#tprog').textContent=list.length+' en cours';
+    renderSub(list,over,now);
+    var tc=$('#tabcount');
+    if(over>0){tc.hidden=false;tc.textContent=over;}else{tc.hidden=true;}
+    renderGreeting();
+  }
+  $('#addform').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var inp=$('#tlabel'),v=inp.value.trim();
+    if(!v)return;
+    S.timers.push({id:uid(),label:v,due:dueFrom(DELAYS[+sel.value][1])});
+    persist();inp.value='';renderTimers();inp.focus();
+  });
+  setInterval(renderTimers,20000);
+
+  /* Trame d'appel */
+  var CALL=[
+    ['Ouverture',[
+      ['Cadre posé','Durée annoncée, objectif de l\'appel, accord pour poser des questions.']
+    ]],
+    ['Besoin',[
+      ['Langue et objectif','Quelle langue, pour quoi faire : poste, mobilité, certification, voyage ?'],
+      ['Niveau actuel et niveau visé','Où en êtes-vous (A1 à C2) ? Quel niveau faut-il atteindre ?'],
+      ['Déclencheur','Pourquoi maintenant ? Qu\'est-ce qui vous a poussé à remplir le formulaire ?'],
+      ['Échéance','Y a-t-il une date à tenir : entretien, départ, passage de certification ?'],
+      ['Disponibilité','Combien d\'heures par semaine, sur quels créneaux ?']
+    ]],
+    ['Financement',[
+      ['Mode de financement','CPF, employeur ou OPCO, financement personnel ?'],
+      ['Solde et démarches','Avez-vous consulté votre solde sur Mon Compte Formation ? Votre employeur est-il au courant ?']
+    ]],
+    ['Décision',[
+      ['Décideur','Décidez-vous seul(e) ou quelqu\'un d\'autre doit valider ?'],
+      ['Alternatives','Avez-vous déjà regardé d\'autres organismes ou solutions ?']
+    ]],
+    ['Clôture',[
+      ['Besoin reformulé','Objectif, niveau, rythme et financement redits avant de proposer.'],
+      ['Prochaine étape datée','Démo, devis ou inscription : jour et heure fixés avant de raccrocher.'],
+      ['Note saisie dans HubSpot','Résumé en trois lignes, étape du deal et prochaine action à jour.']
+    ]]
+  ];
+  var CTOTAL=CALL.reduce(function(n,g){return n+g[1].length;},0), cboxes=[];
+  function updateCallProgress(){
+    var n=cboxes.filter(function(c){return c.checked;}).length;
+    $('#cprog').textContent=n+' / '+CTOTAL;
+    $('#cbar').style.width=(100*n/CTOTAL)+'%';
+  }
+  (function(){
+    var root=$('#callgroups'),k=0;
+    CALL.forEach(function(g){
+      var grp=h('div',{class:'group'},[h('h3',{text:g[0]})]);
+      g[1].forEach(function(it){
+        var m=makeItem('call-'+(k++),it[0],it[1],false,updateCallProgress);
+        cboxes.push(m.cb);
+        grp.appendChild(m.el);
+      });
+      root.appendChild(grp);
+    });
+    updateCallProgress();
+  })();
+  var chStart=0,chInt=0;
+  function tickChrono(){
+    var s=Math.floor((Date.now()-chStart)/1000);
+    $('#chrono').textContent=pad(Math.floor(s/60))+':'+pad(s%60);
+  }
+  function stopChrono(){clearInterval(chInt);chInt=0;$('#chbtn').textContent='Démarrer le chrono';}
+  $('#chbtn').addEventListener('click',function(){
+    if(chInt){stopChrono();return;}
+    chStart=Date.now();tickChrono();chInt=setInterval(tickChrono,1000);
+    $('#chbtn').textContent='Arrêter le chrono';
+  });
+  $('#newcall').addEventListener('click',function(){
+    cboxes.forEach(function(c){c.checked=false;});
+    $('#notes').value='';stopChrono();$('#chrono').textContent='00:00';
+    updateCallProgress();toast('Trame remise à zéro');
+  });
+  $('#copynotes').addEventListener('click',function(){
+    var v=$('#notes').value.trim();
+    if(!v){toast('Aucune note à copier');return;}
+    copyText(v);
+  });
+
+  /* Messages */
+  var FIELDS=[['prenom','prénom'],['langue','langue'],['creneau','créneau'],['moi','ton prénom'],['entreprise','entreprise']];
+  S.fields=S.fields||{};
+  FIELDS.forEach(function(f){
+    var inp=$('#f-'+f[0]);
+    if(f[0]==='moi'||f[0]==='entreprise'){if(S.fields[f[0]])inp.value=S.fields[f[0]];}
+    inp.addEventListener('input',function(){
+      if(f[0]==='moi'||f[0]==='entreprise'){S.fields[f[0]]=inp.value;persist();}
+      renderTemplates();
+    });
+  });
+  var TPL=[
+    {name:'Premier contact après un appel manqué',kind:'Email',subject:'{prenom}, votre demande de formation en {langue}',
+     body:`Bonjour {prenom},
+
+Je viens d'essayer de vous joindre suite à votre demande de formation en {langue} chez {entreprise}. Je suis {moi} et je m'occupe de votre dossier.
+
+Pour préparer notre échange, trois informations m'aideraient : votre objectif, votre niveau actuel et la date à laquelle vous souhaitez démarrer.
+
+Je suis disponible {creneau}. Répondez simplement à ce message avec le créneau qui vous convient, ou rappelez-moi directement.
+
+Bien cordialement,
+{moi}`},
+    {name:'Premier contact après un appel manqué',kind:'SMS',
+     body:`Bonjour {prenom}, c'est {moi} de {entreprise}. Je viens de vous appeler au sujet de votre demande de formation en {langue}. Quand puis-je vous rappeler ? {creneau} vous irait ?`},
+    {name:'Message vocal',kind:'Vocal',
+     body:`Bonjour {prenom}, {moi} de {entreprise}. Je vous appelle suite à votre demande de formation en {langue}. Je vous envoie un SMS et un email à l'instant pour fixer un créneau. À très vite.`},
+    {name:'Relance J+1',kind:'Email',subject:'Re : votre formation en {langue}',
+     body:`Bonjour {prenom},
+
+Je reviens vers vous après mon message d'hier. Souhaitez-vous que nous fixions 15 minutes {creneau} pour faire le point sur votre objectif en {langue} ?
+
+Si c'est plus simple, indiquez-moi un créneau et je vous appelle.
+
+Bien cordialement,
+{moi}`},
+    {name:'Relance J+3',kind:'Email',subject:'Votre projet en {langue} est-il toujours d\'actualité ?',
+     body:`Bonjour {prenom},
+
+Je n'ai pas pu vous joindre ces derniers jours. Votre projet de formation en {langue} est-il toujours d'actualité ?
+
+Si oui, quelques minutes suffisent pour définir le niveau de départ et le financement le plus adapté. Je suis disponible {creneau}.
+
+Bien cordialement,
+{moi}`},
+    {name:'Relance J+7, dernière',kind:'Email',subject:'Dois-je clôturer votre demande ?',
+     body:`Bonjour {prenom},
+
+Sans réponse de votre part, je vais clôturer votre demande de formation en {langue}.
+
+Si le projet est seulement reporté, répondez « plus tard » et je vous recontacte à la date de votre choix. Dans le cas contraire, je vous souhaite une bonne continuation.
+
+Bien cordialement,
+{moi}`},
+    {name:'Compte rendu après démo',kind:'Email',subject:'Récapitulatif de notre échange sur votre formation en {langue}',
+     body:`Bonjour {prenom},
+
+Merci pour notre échange. Voici ce que j'en retiens :
+
+- Objectif : [objectif]
+- Niveau actuel et niveau visé : [niveau actuel] vers [niveau visé]
+- Rythme : [heures par semaine]
+- Financement : [CPF, employeur ou personnel]
+
+Prochaine étape : [action] le [date].
+
+Je reste disponible pour toute question.
+
+Bien cordialement,
+{moi}`},
+    {name:'Relance sur un financement en attente',kind:'Email',subject:'Où en est votre dossier de financement ?',
+     body:`Bonjour {prenom},
+
+Je prends des nouvelles de votre dossier de financement pour la formation en {langue}. Avez-vous pu consulter votre solde ou échanger avec votre employeur ?
+
+Si une pièce vous manque, dites-moi laquelle et je vous guide. Je suis disponible {creneau}.
+
+Bien cordialement,
+{moi}`}
+  ];
+  function fill(s){
+    return s.replace(/\{(\w+)\}/g,function(m,k){
+      var inp=$('#f-'+k),v=inp?inp.value.trim():'';
+      if(v)return v;
+      var f=FIELDS.filter(function(x){return x[0]===k;})[0];
+      return '['+(f?f[1]:k)+']';
+    });
+  }
+  function renderTemplates(){
+    var root=$('#templates');root.textContent='';
+    TPL.forEach(function(t){
+      var body=fill(t.body),subj=t.subject?fill(t.subject):'';
+      var btns=h('div',{class:'row'});
+      if(subj)btns.appendChild(h('button',{class:'btn ghost sm',type:'button',text:'Copier l\'objet',onclick:function(){copyText(subj);}}));
+      btns.appendChild(h('button',{class:'btn sm',type:'button',text:'Copier le message',onclick:function(){copyText(body);}}));
+      root.appendChild(h('div',{class:'card tpl'},[
+        h('div',{class:'meta'},[h('h2',{text:t.name}),h('span',{class:'kind',text:t.kind})]),
+        subj?h('div',{class:'subj',text:'Objet : '+subj}):null,
+        h('pre',{class:'txt',text:body}),
+        btns
+      ]));
+    });
+  }
+
+  /* Objections : liste à gauche, réponse à droite */
+  var OBJ=[
+    ['« C\'est trop cher »',
+     'Je comprends, le budget compte. Regardons ce que vous obtenez pour ce prix : [heures, formateur, suivi]. Et selon votre situation, une partie peut être prise en charge par le CPF ou par votre employeur.',
+     'Par rapport à quoi le trouvez-vous élevé ? Quel budget aviez-vous en tête ?'],
+    ['« Je dois y réfléchir »',
+     'Bien sûr. Pour que votre réflexion soit utile, dites-moi ce qu\'il vous manque aujourd\'hui pour décider.',
+     'Est-ce le prix, le contenu ou le financement ? Fixons ensemble un moment pour en reparler, jeudi à 10 h par exemple ?'],
+    ['« Je n\'ai pas le temps »',
+     'C\'est justement pour cela que le rythme se règle sur vos disponibilités : [format, durée des séances, horaires].',
+     'Combien d\'heures par semaine pouvez-vous réellement y consacrer, et à quel moment de la journée ?'],
+    ['« Il n\'y a pas de présentiel »',
+     'Vous avez raison, la formation se déroule [à distance, en visio]. En contrepartie, vous gagnez [pas de déplacement, créneaux flexibles, même formateur d\'une séance à l\'autre], avec de la pratique orale en direct.',
+     'Qu\'attendez-vous du présentiel que vous craignez de perdre : le contact, la régularité, autre chose ? Avez-vous déjà suivi des cours en visio ?'],
+    ['« Je ne sais pas si mon CPF suffit »',
+     'Votre solde se consulte en deux minutes sur Mon Compte Formation. Si on le regarde ensemble, nous saurons tout de suite quelle part reste à financer.',
+     'Avez-vous votre accès sous la main pour que nous le vérifiions maintenant ?'],
+    ['« Je dois en parler à mon employeur ou aux RH »',
+     'Très bien. Je peux vous préparer un récapitulatif à leur transmettre pour faciliter la décision.',
+     'Qui valide chez vous, et quand aurez-vous sa réponse ? Je vous rappelle à cette date.'],
+    ['« J\'ai vu moins cher » ou « J\'ai une appli gratuite »',
+     'Une appli est utile pour entretenir la pratique. Votre objectif est [objectif], et il demande [oral, suivi, certification].',
+     'Qu\'est-ce qui vous a manqué dans ce que vous avez déjà essayé ?'],
+    ['« Je ne connais pas mon niveau »',
+     'Ce n\'est pas un problème, c\'est le point de départ. Nous le déterminons ensemble avec [test de niveau].',
+     'À quand remonte la dernière fois où vous avez utilisé la langue, et dans quel contexte ?'],
+    ['« Je compare avec d\'autres organismes »',
+     'C\'est normal, c\'est un investissement. Je vous dis où nous sommes forts et où d\'autres peuvent l\'être davantage.',
+     'Quels critères comptent le plus pour vous : prix, rythme, certification, formateur ?'],
+    ['« Rappelez-moi plus tard »',
+     'Avec plaisir. Fixons le jour et l\'heure maintenant, pour que mon appel tombe au bon moment.',
+     'Qu\'est-ce qui change d\'ici là : budget, planning, accord de votre employeur ?']
+  ];
+  var oSel=0;
+  function renderDetail(){
+    var d=$('#odetail');d.textContent='';
+    if(oSel<0){d.appendChild(h('p',{class:'empty',text:'Aucune objection ne correspond.'}));return;}
+    var o=OBJ[oSel];
+    d.appendChild(h('h2',{text:o[0]}));
+    d.appendChild(h('p',{},[h('span',{class:'lbl',text:'Réponse'}),o[1]]));
+    d.appendChild(h('p',{},[h('span',{class:'lbl',text:'Question à poser'}),o[2]]));
+    d.appendChild(h('div',{class:'row'},[h('button',{class:'btn sm',type:'button',text:'Copier',onclick:function(){copyText(o[1]+'\n\n'+o[2]);}})]));
+  }
+  function selectObj(i){
+    oSel=i;
+    Array.prototype.forEach.call($('#olist').querySelectorAll('.oitem'),function(b){
+      if(+b.getAttribute('data-i')===i)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');
+    });
+    renderDetail();
+    if(window.innerWidth<=860){$('#odetail').scrollIntoView({behavior:'smooth',block:'nearest'});}
+  }
+  function renderObjections(q){
+    var nq=(q||'').toLowerCase().trim(),idx=[];
+    OBJ.forEach(function(o,i){
+      var hay=(o[0]+' '+o[1]+' '+o[2]).toLowerCase();
+      if(!nq||hay.indexOf(nq)>-1)idx.push(i);
+    });
+    if(idx.indexOf(oSel)<0)oSel=idx.length?idx[0]:-1;
+    var list=$('#olist');list.textContent='';
+    idx.forEach(function(i){
+      var b=h('button',{class:'oitem',type:'button','data-i':String(i),text:OBJ[i][0],onclick:function(){selectObj(i);}});
+      if(i===oSel)b.setAttribute('aria-current','true');
+      list.appendChild(h('li',{},[b]));
+    });
+    renderDetail();
+  }
+  $('#osearch').addEventListener('input',function(){renderObjections(this.value);});
+
+  /* Démarrage */
+  renderRoutine();renderTimers();renderTemplates();renderObjections('');
+  showTab(TABS.indexOf(S.tab)>-1?S.tab:'jour');
+  requestAnimationFrame(function(){requestAnimationFrame(function(){ind.classList.add('ready');});});
+})();
+</script>
+
+</body>
+</html>
